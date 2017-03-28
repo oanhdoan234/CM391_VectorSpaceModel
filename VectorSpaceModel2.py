@@ -67,8 +67,8 @@ def removeStopWord(news):
     return (stemmed_clean_news)
 
 
-# Create matrix
-def create_matrix(news_list):
+# Create Frequency Dictionary
+def create_freq_dict(news_list):
     freq_dict = dict()
 
     # add terms and frequency to dict
@@ -122,10 +122,13 @@ def filterDictionary(news_list, dictionary):
 
 
 if __name__ == '__main__':
-    inpf = open("test.txt", encoding="utf8")
-    #inpf = open("newsCorpora_full_updated_small.txt")
+    #Open file
+    #inpf = open("test.txt", encoding="utf8")
+    inpf = open("newsCorpora_full_updated_small.txt")
     #inpf = open("test_2.txt")
-    news_coll = splitNews(inpf)  # List of news (each news = 1 string =  1 list element)
+
+    #List of news (each news = 1 string =  1 list element)
+    news_coll = splitNews(inpf)
     news_list = []
     for news in news_coll:
         news_no_punct = removePunct(news)
@@ -133,8 +136,8 @@ if __name__ == '__main__':
         news_list.append(stemmed_news)
     # print(news_list)
 
-    raw_matrix = create_matrix(news_list)
 
-    ftd = filterDictionary(news_list, raw_matrix)
-    for k in ftd.keys():
-        print(k, ftd[k])
+    raw_matrix = create_freq_dict(news_list)
+    filter_matrix = filterDictionary(news_list, raw_matrix)
+    for k in filter_matrix.keys():
+        print(k, filter_matrix[k])

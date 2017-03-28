@@ -85,7 +85,7 @@ def create_matrix(news_list):
 
 
 def filterDictionary(news_list, dictionary):
-    del_word = list()
+    del_word = set()
 
     # delete words that have freq < 2 in each of all news
     for key in dictionary.keys():
@@ -94,7 +94,7 @@ def filterDictionary(news_list, dictionary):
             if dictionary[key][i] < 2:
                 ct = ct + 1
         if ct == len(news_list):
-            del_word.append(key)
+            del_word.add(key)
 
     # delete words that have total freq < 5 in all news
     for key in dictionary.keys():
@@ -102,7 +102,7 @@ def filterDictionary(news_list, dictionary):
         for i in range(len(news_list)):
             count = count + dictionary[key][i]
         if count < 5:
-            del_word.append(key)
+            del_word.add(key)
 
     # delete words that have freq > 0 in only 1 news
     for key in dictionary.keys():
@@ -113,7 +113,7 @@ def filterDictionary(news_list, dictionary):
                     count = count + dictionary[key][k]
                 for k in range(i + 1, len(news_list)):
                     count = count + dictionary[key][k]
-            if count == 0: del_word.append(key)
+                if count == 0: del_word.add(key)
 
     for key in del_word:
         del dictionary[key]
@@ -122,9 +122,9 @@ def filterDictionary(news_list, dictionary):
 
 
 if __name__ == '__main__':
-    #inpf = open("test.txt", encoding="utf8")
+    inpf = open("test.txt", encoding="utf8")
     #inpf = open("newsCorpora_full_updated_small.txt")
-    inpf = open("test_2.txt")
+    #inpf = open("test_2.txt")
     news_coll = splitNews(inpf)  # List of news (each news = 1 string =  1 list element)
     news_list = []
     for news in news_coll:

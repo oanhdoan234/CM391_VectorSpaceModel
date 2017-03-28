@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Mar 26 12:58:49 2017
-
-@author: Oanh Doan
-"""
-
 import nltk
 import re
 from nltk.data import load
@@ -14,9 +7,7 @@ from nltk.tag import pos_tag
 from nltk.stem import WordNetLemmatizer
 
 """******************************************************************************************************************
-
 ========================================CREATE A TERM-BY-DOCUMENT MATRIX ============================================
-
 ******************************************************************************************************************"""
 
 
@@ -77,8 +68,10 @@ def removeStopWord(news):
 
 
 # Create matrix
-def createMatrix(new_list):
+def create_matrix(news_list):
     freq_dict = dict()
+
+    # add terms and frequency to dict
     for i in range(0, len(news_list)):
         news = news_list[i]
         for w in news.split():
@@ -88,22 +81,50 @@ def createMatrix(new_list):
                 freq = [0 for i in range(0, len(news_list))]
                 freq_dict[w] = freq
                 freq_dict[w][i] += 1
-    del_word = []
-    for key in freq_dict.keys():
+    return freq_dict
+
+
+def filterDictionary(news_list, dictionary):
+    del_word = list()
+
+    # delete words that have freq < 2 in each of all news
+    for key in dictionary.keys():
         ct = 0
         for i in range(0, len(news_list)):
-            if freq_dict[key][i] < 2:
+            if dictionary[key][i] < 2:
                 ct = ct + 1
         if ct == len(news_list):
             del_word.append(key)
 
+    # delete words that have total freq < 5 in all news
+    for key in dictionary.keys():
+        count = 0
+        for i in range(len(news_list)):
+            count = count + dictionary[key][i]
+        if count < 5:
+            del_word.append(key)
+
+    # delete words that have freq > 0 in only 1 news
+    for key in dictionary.keys():
+        for i in range(len(news_list)):
+            if dictionary[key][i] > 0:
+                count = 0
+                for k in range(0, i):
+                    count = count + dictionary[key][k]
+                for k in range(i + 1, len(news_list)):
+                    count = count + dictionary[key][k]
+            if count == 0: del_word.append(key)
+
     for key in del_word:
-        del freq_dict[key]
-    return freq_dict
+        del dictionary[key]
+
+    return dictionary
 
 
 if __name__ == '__main__':
-    inpf = open("test.txt", encoding="utf8")
+    #inpf = open("test.txt", encoding="utf8")
+    #inpf = open("newsCorpora_full_updated_small.txt")
+    inpf = open("test_2.txt")
     news_coll = splitNews(inpf)  # List of news (each news = 1 string =  1 list element)
     news_list = []
     for news in news_coll:
@@ -112,6 +133,8 @@ if __name__ == '__main__':
         news_list.append(stemmed_news)
     # print(news_list)
 
-    ftd = createMatrix(news_list)
+    raw_matrix = create_matrix(news_list)
+
+    ftd = filterDictionary(news_list, raw_matrix)
     for k in ftd.keys():
         print(k, ftd[k])

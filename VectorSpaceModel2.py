@@ -6,6 +6,15 @@ from nltk.corpus import stopwords
 from nltk.tag import pos_tag
 from nltk.stem import WordNetLemmatizer
 
+import pickle
+import time
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import TruncatedSVD
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import Normalizer
+from sklearn.neighbors import KNeighborsClassifier
+
 """******************************************************************************************************************
 ========================================CREATE A TERM-BY-DOCUMENT MATRIX ============================================
 ******************************************************************************************************************"""
@@ -121,11 +130,25 @@ def filterDictionary(news_list, dictionary):
     return dictionary
 
 
+def tfidf(text_file):
+    vectorizer = TfidfVectorizer(max_df=0.5, max_features= None,
+                                 min_df=2, stop_words='english',
+                                 use_idf=True)
+    tfidf_matrix = vectorizer.fit_transform(text_file)
+    idf = vectorizer._tfidf.idf_.tolist()
+    feature_names = vectorizer.get_feature_names()
+    p = zip(feature_names, idf)
+    outf = open('tfidf.txt','w')
+    for row in p:
+        outf.write(row[0])
+        outf.write('\t')
+        outf.write(str(row[1]))
+        outf.write('\n')
+    outf.close()
+
 if __name__ == '__main__':
     #Open file
-    #inpf = open("test.txt", encoding="utf8")
-    inpf = open("newsCorpora_full_updated_small.txt")
-    #inpf = open("test_2.txt")
+    inpf = open("text2.txt", encoding="utf8")
 
     #List of news (each news = 1 string =  1 list element)
     news_coll = splitNews(inpf)
@@ -134,10 +157,14 @@ if __name__ == '__main__':
         news_no_punct = removePunct(news)
         stemmed_news = " ".join(removeStopWord(news_no_punct))
         news_list.append(stemmed_news)
-    # print(news_list)
 
 
+    tfidf(news_list)
+
+    '''
     raw_matrix = create_freq_dict(news_list)
     filter_matrix = filterDictionary(news_list, raw_matrix)
     for k in filter_matrix.keys():
         print(k, filter_matrix[k])
+    '''
+

@@ -5,6 +5,9 @@ from nltk.corpus import wordnet
 from nltk.corpus import stopwords
 from nltk.tag import pos_tag
 from nltk.stem import WordNetLemmatizer
+from nltk.stem.porter import *
+from nltk.stem import SnowballStemmer
+
 
 import pickle
 import time
@@ -66,13 +69,20 @@ def removeStopWord(news):
     wordtag_clean_news = [[word, pos] for word, pos in tagged_clean_news]
     # Stem words
     stemmed_clean_news = []
+
     for word_tag in wordtag_clean_news:
         if word_tag[1] in special_tag:
             stem_word = wlem.lemmatize(word_tag[0], get_wordnet_pos(word_tag[1]))
             stemmed_clean_news.append(stem_word)
         else:
             stemmed_clean_news.append(word_tag[0])
-            # print(word_tag)                                #Check pos taggers
+    '''
+    stemmer = SnowballStemmer("english")
+    for word_tag in wordtag_clean_news:
+        stemmed_clean_news.append(stemmer.stem(word_tag[0]))
+    '''
+    for word in stemmed_clean_news:
+        print(word)
     return (stemmed_clean_news)
 
 

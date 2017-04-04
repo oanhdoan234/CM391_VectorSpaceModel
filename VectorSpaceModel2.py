@@ -23,11 +23,25 @@ from sklearn.neighbors import KNeighborsClassifier
 ******************************************************************************************************************"""
 
 
-# Turn document into a list of news
+# Turn document into a list of news:
+
 def splitNews(file):
     full_text = file.read()
-    split_text = full_text.split(">>>>")
-    return (split_text[1:len(split_text)])
+    split_text = full_text.split(">>>>")[1:]
+    b = split_text[:250]
+    t = split_text[250:500]
+    e = split_text[500:750]
+    m = split_text[750:]
+    label = []
+    for news in b:
+        label.append('b')
+    for news in t:
+        label.append('t')
+    for news in e:
+        label.append('e')
+    for news in m:
+        label.append('m')
+    return [split_text, label]
 
 
 def get_wordnet_pos(treebank_tag):
@@ -173,13 +187,13 @@ def vectorize(X_train_raw):
     #   - Filters out terms that occur in more than half of the docs (max_df=0.5)
     #   - Filters out terms that occur in only one document (min_df=2).
     #   - Selects the 10,000 most frequently occuring words in the corpus.
-    #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of 
-    #     document length on the tf-idf values. 
+    #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of
+    #     document length on the tf-idf values.
     vectorizer = TfidfVectorizer(max_df=0.5, max_features=10000,
                              min_df=2, stop_words='english',
                              use_idf=True)
 
-    # Build the tfidf vectorizer from the training data ("fit"), and apply it 
+    # Build the tfidf vectorizer from the training data ("fit"), and apply it
     # ("transform").
     X_train_tfidf = vectorizer.fit_transform(X_train_raw)
 
@@ -227,15 +241,16 @@ if __name__ == '__main__':
 
     print("Loading dataset...")
 
+
     #Open file
-    inpf = open("text2.txt", encoding="utf8")
+    inpf = open("shortlist.txt", encoding="utf8")
 
     # TODO: split input file into a list of articles and a list of labels
     # ... do something here ... to get:
-    raw_data = [] # list of news: [article1, article2, ...]
-    all_labels = [] # list of corresponding labels: [label-for-article1, label-for-article2, ...]
+    result = splitNews(inpf)
+    raw_data = result[0]
+    all_labels = result[1]
 
-   
     # Preprocess news(remove stop words + stem)
     # and put news into news_list
     all_news = [] # list of string (news)
@@ -253,16 +268,16 @@ if __name__ == '__main__':
     # TODO: Split data into train and test data
     # Maybe take X % of all_news for training, save the rest for testing
     # ... do something here ... to get:
-    X_train_raw = []        # train news, X % of all_news
-    y_train = []            # train labels, corresponding X % of all_labels
-    X_test_raw = []         # test news, (100-X) % of all_news
-    y_test = []             # test labels, corresponding (100-X) % of all_labels
+    X_train_raw = [news for news in all_news[0:900]]        # train news, X % of all_news
+    y_train = [l for l in all_labels[0:900]]            # train labels, corresponding X % of all_labels
+    X_test_raw = [news for news in all_news[900:]]         # test news, (100-X) % of all_news
+    y_test = [l for l in all_labels[900:]]             # test labels, corresponding (100-X) % of all_labels
 
 
-    # print("  %d training examples (%d positive)" % (len(y_train), sum(y_train)))
-    # print("  %d test examples (%d positive)" % (len(y_test), sum(y_test)))
+    #print("  %d training examples (%d positive)" % (len(y_train), sum(y_train)))
+    #print("  %d test examples (%d positive)" % (len(y_test), sum(y_test)))
 
-
+    '''
     ###############################################################################
     #  Use LSA to vectorize the articles.
     ###############################################################################
@@ -298,7 +313,7 @@ if __name__ == '__main__':
 
 
     # Measure accuracy
-    numRight = 0;
+    numRight = 0
     for i in range(0,len(p)):
         if p[i] == y_test[i]: # compare predicted label with given label of testing data
             numRight += 1
@@ -324,7 +339,7 @@ if __name__ == '__main__':
     p = knn_lsa.predict(X_test_lsa)
 
     # Measure accuracy
-    numRight = 0;
+    numRight = 0
     for i in range(0,len(p)):
         if p[i] == y_test[i]:
             numRight += 1
@@ -335,3 +350,4 @@ if __name__ == '__main__':
     elapsed = (time.time() - t0)    
     print("    done in %.3fsec" % elapsed)
 
+    '''

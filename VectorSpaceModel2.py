@@ -180,7 +180,26 @@ if __name__ == '__main__':
         news_list.append(stemmed_news)
 
 
-    tfidf(news_list)
+    # tfidf(news_list)
+
+    # Tfidf vectorizer:
+    #   - Strips out “stop words”
+    #   - Filters out terms that occur in more than half of the docs (max_df=0.5)
+    #   - Filters out terms that occur in only one document (min_df=2).
+    #   - Selects the 10,000 most frequently occuring words in the corpus.
+    #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of 
+    #     document length on the tf-idf values. 
+    vectorizer = TfidfVectorizer(max_df=0.5, max_features=10000,
+                                 min_df=2, stop_words='english',
+                                 use_idf=True)
+
+    # Build the tfidf vectorizer from the training data ("fit"), and apply it 
+    # ("transform").
+    # To explore tfidf_matrix, follow example
+    # http://www.markhneedham.com/blog/2015/02/15/pythonscikit-learn-calculating-tfidf-on-how-i-met-your-mother-transcripts/
+    tfidf_matrix = vectorizer.fit_transform(news_list)
+    feature_names = vectorizer.get_feature_names() 
+
 
     '''
     raw_matrix = create_freq_dict(news_list)
@@ -188,4 +207,5 @@ if __name__ == '__main__':
     for k in filter_matrix.keys():
         print(k, filter_matrix[k])
     '''
+
 

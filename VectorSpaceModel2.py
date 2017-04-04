@@ -81,8 +81,8 @@ def removeStopWord(news):
     for word_tag in wordtag_clean_news:
         stemmed_clean_news.append(stemmer.stem(word_tag[0]))
     '''
-    for word in stemmed_clean_news:
-        print(word)
+    # for word in stemmed_clean_news:
+        # print(word)
     return (stemmed_clean_news)
 
 
@@ -162,6 +162,11 @@ def tfidf(text_file):
         outf.write('\n')
     outf.close()
 
+
+
+
+
+# ======================================== MAIN ============================================ #
 if __name__ == '__main__':
     #Open file
     inpf = open("text2.txt", encoding="utf8")

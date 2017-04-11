@@ -24,7 +24,7 @@ from sklearn.neighbors import KNeighborsClassifier
 
 
 # Turn document into a list of news:
-
+'''
 def splitNews(file):
     full_text = file.read()
     split_text = full_text.split(">>>>")[1:]
@@ -42,7 +42,33 @@ def splitNews(file):
     for news in m:
         label.append('m')
     return [split_text, label]
-
+'''
+def splitNews(file):
+    full_text = file.read()
+    split_text = full_text.split(">>>>")[1:]
+    b = split_text[:250]
+    t = split_text[250:500]
+    e = split_text[500:750]
+    m = split_text[750:]
+    label = []
+    split_text_new = []
+    for i in range(0, 250):
+        split_text_new.append(b[i])
+        split_text_new.append(t[i])
+        split_text_new.append(e[i])
+        split_text_new.append(m[i])
+    for i in range(0, len(split_text_new)):
+        if i % 4 == 0:
+            label.append('b')
+        elif i % 4 == 1:
+            label.append('t')
+        elif i % 4 == 2:
+            label.append('e')
+        elif i % 4 == 3:
+            label.append('m')
+    print(len(split_text_new))
+    print(len(label))
+    return [split_text_new, label]
 
 def get_wordnet_pos(treebank_tag):
     if treebank_tag.startswith('J'):
@@ -362,4 +388,3 @@ if __name__ == '__main__':
     elapsed = (time.time() - t0)    
     print("    done in %.3fsec" % elapsed)
 
-    

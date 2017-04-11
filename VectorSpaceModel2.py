@@ -154,32 +154,6 @@ def filterDictionary(news_list, dictionary):
     return dictionary
 
 
-def tfidf(text_file):
-    # Tfidf vectorizer:
-    #   - Strips out “stop words”
-    #   - Filters out terms that occur in more than half of the docs (max_df=0.5)
-    #   - Filters out terms that occur in only one document (min_df=2).
-    #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of
-    #     document length on the tf-idf values.
-    vectorizer = TfidfVectorizer(max_df=0.5, max_features= None,
-                                 min_df=2, stop_words='english',
-                                 use_idf=True)
-
-    tfidf_matrix = vectorizer.fit_transform(text_file)
-    print("  Actual number of tfidf features: %d" % tfidf_matrix.get_shape()[1])
-
-    # idf = vectorizer._tfidf.idf_.tolist()
-    # feature_names = vectorizer.get_feature_names()
-    # p = zip(feature_names, idf)
-    # outf = open('tfidf.txt','w')
-    # for row in p:
-    #     outf.write(row[0])
-    #     outf.write('\t')
-    #     outf.write(str(row[1]))
-    #     outf.write('\n')
-    # outf.close()
-
-
 # Take a list of documents, create tfidf and lsa matrices
 def vectorize(X_train_raw):
     # Tfidf vectorizer:
@@ -242,11 +216,10 @@ if __name__ == '__main__':
     print("Loading dataset...")
 
 
-    #Open file
+    # Open file
     inpf = open("shortlist.txt", encoding="utf8")
 
-    # TODO: split input file into a list of articles and a list of labels
-    # ... do something here ... to get:
+    # Split input file into a list of articles and a list of labels
     result = splitNews(inpf)
     raw_data = result[0]
     all_labels = result[1]
@@ -260,35 +233,74 @@ if __name__ == '__main__':
         all_news.append(stemmed_news)
 
 
-    # NOTE: uptil this point
+    # NOTE: up till this point
     # We should have all articles in all_news
     # with their corresponding labels in all_labels
 
 
-    # TODO: Split data into train and test data
-    # Maybe take X % of all_news for training, save the rest for testing
-    # ... do something here ... to get:
-    X_train_raw = [news for news in all_news[0:900]]        # train news, X % of all_news
+    # Split data into train and test data
+    X_train_raw = [news for news in all_news[0:900]]    # train news, X % of all_news
     y_train = [l for l in all_labels[0:900]]            # train labels, corresponding X % of all_labels
-    X_test_raw = [news for news in all_news[900:]]         # test news, (100-X) % of all_news
-    y_test = [l for l in all_labels[900:]]             # test labels, corresponding (100-X) % of all_labels
+    X_test_raw = [news for news in all_news[900:]]      # test news, (100-X) % of all_news
+    y_test = [l for l in all_labels[900:]]              # test labels, corresponding (100-X) % of all_labels
 
 
     #print("  %d training examples (%d positive)" % (len(y_train), sum(y_train)))
     #print("  %d test examples (%d positive)" % (len(y_test), sum(y_test)))
 
-    '''
+    
     ###############################################################################
     #  Use LSA to vectorize the articles.
     ###############################################################################
 
-    # Apply transformations to the train data
-    (X_train_tfidf, X_train_lsa) = vectorize(X_train_raw)
+    # # Apply transformations to the train data
+    # (X_train_tfidf, X_train_lsa) = vectorize(X_train_raw)
+    # print(X_train_tfidf.get_shape())
+    # # Apply the transformations to the test data too
+    # (X_test_tfidf, X_test_lsa) = vectorize(X_test_raw)
+    # print(X_test_tfidf.get_shape())
+
+    # Tfidf vectorizer:
+	#   - Strips out “stop words”
+	#   - Filters out terms that occur in more than half of the docs (max_df=0.5)
+	#   - Filters out terms that occur in only one document (min_df=2).
+	#   - Selects the 10,000 most frequently occuring words in the corpus.
+	#   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of 
+	#     document length on the tf-idf values. 
+    vectorizer = TfidfVectorizer(max_df=0.5, max_features=10000,
+								min_df=2, stop_words='english',
+								use_idf=True)
+
+	# Build the tfidf vectorizer from the training data ("fit"), and apply it 
+	# ("transform").
+    X_train_tfidf = vectorizer.fit_transform(X_train_raw)
+    print(X_train_tfidf.get_shape())
+
+    print("  Actual number of tfidf features: %d" % X_train_tfidf.get_shape()[1])
+
+    print("\nPerforming dimensionality reduction using LSA")
+    t0 = time.time()
+
+	# Project the tfidf vectors onto the first 150 principal components.
+	# Though this is significantly fewer features than the original tfidf vector,
+	# they are stronger features, and the accuracy is higher.
+    svd = TruncatedSVD(100)
+    lsa = make_pipeline(svd, Normalizer(copy=False))
+
+	# Run SVD on the training data, then project the training data.
+    X_train_lsa = lsa.fit_transform(X_train_tfidf)
 
 
-    # Apply the transformations to the test data too
-    (X_test_tfidf, X_test_lsa) = vectorize(X_test_raw)
+    print("  done in %.3fsec" % (time.time() - t0))
 
+    explained_variance = svd.explained_variance_ratio_.sum()
+    print("  Explained variance of the SVD step: {}%".format(int(explained_variance * 100)))
+
+
+	# Now apply the transformations to the test data as well.
+    X_test_tfidf = vectorizer.transform(X_test_raw)
+    print(X_test_tfidf.get_shape())
+    X_test_lsa = lsa.transform(X_test_tfidf)
 
     ###############################################################################
     #  Run classification of the test articles
@@ -350,4 +362,4 @@ if __name__ == '__main__':
     elapsed = (time.time() - t0)    
     print("    done in %.3fsec" % elapsed)
 
-    '''
+    

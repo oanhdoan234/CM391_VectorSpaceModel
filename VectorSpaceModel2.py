@@ -24,35 +24,18 @@ from sklearn.neighbors import KNeighborsClassifier
 
 
 # Turn document into a list of news:
-'''
+
 def splitNews(file):
     full_text = file.read()
     split_text = full_text.split(">>>>")[1:]
-    b = split_text[:250]
-    t = split_text[250:500]
-    e = split_text[500:750]
-    m = split_text[750:]
-    label = []
-    for news in b:
-        label.append('b')
-    for news in t:
-        label.append('t')
-    for news in e:
-        label.append('e')
-    for news in m:
-        label.append('m')
-    return [split_text, label]
-'''
-def splitNews(file):
-    full_text = file.read()
-    split_text = full_text.split(">>>>")[1:]
-    b = split_text[:250]
-    t = split_text[250:500]
-    e = split_text[500:750]
-    m = split_text[750:]
+    size = int(len(split_text)/4)
+    b = split_text[:size]
+    t = split_text[size:2*size]
+    e = split_text[2*size:3*size]
+    m = split_text[3*size:]
     label = []
     split_text_new = []
-    for i in range(0, 250):
+    for i in range(0, size):
         split_text_new.append(b[i])
         split_text_new.append(t[i])
         split_text_new.append(e[i])
@@ -116,13 +99,6 @@ def removeStopWord(news):
             stemmed_clean_news.append(stem_word)
         else:
             stemmed_clean_news.append(word_tag[0])
-    '''
-    stemmer = SnowballStemmer("english")
-    for word_tag in wordtag_clean_news:
-        stemmed_clean_news.append(stemmer.stem(word_tag[0]))
-    '''
-    # for word in stemmed_clean_news:
-        # print(word)
     return (stemmed_clean_news)
 
 
@@ -180,58 +156,6 @@ def filterDictionary(news_list, dictionary):
     return dictionary
 
 
-# Take a list of documents, create tfidf and lsa matrices
-def vectorize(X_train_raw):
-    # Tfidf vectorizer:
-    #   - Strips out “stop words”
-    #   - Filters out terms that occur in more than half of the docs (max_df=0.5)
-    #   - Filters out terms that occur in only one document (min_df=2).
-    #   - Selects the 10,000 most frequently occuring words in the corpus.
-    #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of
-    #     document length on the tf-idf values.
-    vectorizer = TfidfVectorizer(max_df=0.5, max_features=10000,
-                             min_df=2, stop_words='english',
-                             use_idf=True)
-
-    # Build the tfidf vectorizer from the training data ("fit"), and apply it
-    # ("transform").
-    X_train_tfidf = vectorizer.fit_transform(X_train_raw)
-
-    print("  Actual number of tfidf features: %d" % X_train_tfidf.get_shape()[1])
-
-
-    # feature_names = vectorizer.get_feature_names()
-    # dense = X_train_tfidf.todense()
-    # print(len(dense))
-    # episode = dense[0].tolist()[0]
-    # phrase_scores = [pair for pair in zip(range(0, len(episode)), episode) if pair[1] > 0]
-    # print(len(phrase_scores))
-    # print(sorted(phrase_scores, key=lambda t: t[1] * -1)[:5])
-    # sorted_phrase_scores = sorted(phrase_scores, key=lambda t: t[1] * -1)
-    # for phrase, score in [(feature_names[word_id], score) for (word_id, score) in sorted_phrase_scores][:20]:
-    #     print('{0: <20} {1}'.format(phrase, score))
-
-
-    print("\nPerforming dimensionality reduction using LSA")
-    t0 = time.time()
-
-    # Project the tfidf vectors onto the first 150 principal components.
-    # Though this is significantly fewer features than the original tfidf vector,
-    # they are stronger features, and the accuracy is higher.
-    svd = TruncatedSVD(100)
-    lsa = make_pipeline(svd, Normalizer(copy=False))
-
-    # Run SVD on the training data, then project the training data.
-    X_train_lsa = lsa.fit_transform(X_train_tfidf)
-
-    print("  done in %.3fsec" % (time.time() - t0))
-
-    explained_variance = svd.explained_variance_ratio_.sum()
-    print("  Explained variance of the SVD step: {}%".format(int(explained_variance * 100)))
-
-    return (X_train_tfidf,X_train_lsa)
-
-
 
 if __name__ == '__main__':
 
@@ -240,151 +164,146 @@ if __name__ == '__main__':
     ###############################################################################
 
     print("Loading dataset...")
+    outf = open("output.csv",'w')
+    outf.write("Size, Tf-idf accuracy (%), LSA accuracy (%)\n")
+    for running_size in range(2,5):
+        file = "./lod/sl" + str(200*running_size) + ".txt"
+        # Open file
+        inpf = open(file, encoding="utf8")
+
+        # Split input file into a list of articles and a list of labels
+        result = splitNews(inpf)
+        raw_data = result[0]
+        all_labels = result[1]
+
+        # Preprocess news(remove stop words + stem)
+        # and put news into news_list
+        all_news = [] # list of string (news)
+        for news in raw_data:
+            news_no_punct = removePunct(news)
+            stemmed_news = " ".join(removeStopWord(news_no_punct))
+            all_news.append(stemmed_news)
+
+        cutoff = int(len(all_news)*0.9)
+
+        # NOTE: up till this point
+        # We should have all articles in all_news
+        # with their corresponding labels in all_labels
 
 
-    # Open file
-    inpf = open("shortlist.txt", encoding="utf8")
-
-    # Split input file into a list of articles and a list of labels
-    result = splitNews(inpf)
-    raw_data = result[0]
-    all_labels = result[1]
-
-    # Preprocess news(remove stop words + stem)
-    # and put news into news_list
-    all_news = [] # list of string (news)
-    for news in raw_data:
-        news_no_punct = removePunct(news)
-        stemmed_news = " ".join(removeStopWord(news_no_punct))
-        all_news.append(stemmed_news)
+        # Split data into train and test data
+        X_train_raw = [news for news in all_news[0:cutoff]]    # train news, X % of all_news
+        y_train = [l for l in all_labels[0:cutoff]]            # train labels, corresponding X % of all_labels
+        X_test_raw = [news for news in all_news[cutoff:]]      # test news, (100-X) % of all_news
+        y_test = [l for l in all_labels[cutoff:]]              # test labels, corresponding (100-X) % of all_labels
 
 
-    # NOTE: up till this point
-    # We should have all articles in all_news
-    # with their corresponding labels in all_labels
+        ###############################################################################
+        #  Use LSA to vectorize the articles.
+        ###############################################################################
 
 
-    # Split data into train and test data
-    X_train_raw = [news for news in all_news[0:900]]    # train news, X % of all_news
-    y_train = [l for l in all_labels[0:900]]            # train labels, corresponding X % of all_labels
-    X_test_raw = [news for news in all_news[900:]]      # test news, (100-X) % of all_news
-    y_test = [l for l in all_labels[900:]]              # test labels, corresponding (100-X) % of all_labels
+        # Tfidf vectorizer:
+        #   - Strips out “stop words”
+        #   - Filters out terms that occur in more than half of the docs (max_df=0.5)
+        #   - Filters out terms that occur in only one document (min_df=2).
+        #   - Selects the 10,000 most frequently occuring words in the corpus.
+        #   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of
+        #     document length on the tf-idf values.
+        vectorizer = TfidfVectorizer(max_df=0.5, max_features= 10000,
+                                    min_df=2, stop_words='english',
+                                    use_idf=True)
+
+        # Build the tfidf vectorizer from the training data ("fit"), and apply it
+        # ("transform").
+        X_train_tfidf = vectorizer.fit_transform(X_train_raw)
+        print(X_train_tfidf.get_shape())
+
+        print("  Actual number of tfidf features: %d" % X_train_tfidf.get_shape()[1])
+
+        print("\nPerforming dimensionality reduction using LSA")
+        t0 = time.time()
+
+        # Project the tfidf vectors onto the first 150 principal components.
+        # Though this is significantly fewer features than the original tfidf vector,
+        # they are stronger features, and the accuracy is higher.
+        svd = TruncatedSVD(100)
+        lsa = make_pipeline(svd, Normalizer(copy=False))
+
+        # Run SVD on the training data, then project the training data.
+        X_train_lsa = lsa.fit_transform(X_train_tfidf)
 
 
-    #print("  %d training examples (%d positive)" % (len(y_train), sum(y_train)))
-    #print("  %d test examples (%d positive)" % (len(y_test), sum(y_test)))
+        print("  done in %.3fsec" % (time.time() - t0))
 
-    
-    ###############################################################################
-    #  Use LSA to vectorize the articles.
-    ###############################################################################
-
-    # # Apply transformations to the train data
-    # (X_train_tfidf, X_train_lsa) = vectorize(X_train_raw)
-    # print(X_train_tfidf.get_shape())
-    # # Apply the transformations to the test data too
-    # (X_test_tfidf, X_test_lsa) = vectorize(X_test_raw)
-    # print(X_test_tfidf.get_shape())
-
-    # Tfidf vectorizer:
-	#   - Strips out “stop words”
-	#   - Filters out terms that occur in more than half of the docs (max_df=0.5)
-	#   - Filters out terms that occur in only one document (min_df=2).
-	#   - Selects the 10,000 most frequently occuring words in the corpus.
-	#   - Normalizes the vector (L2 norm of 1.0) to normalize the effect of 
-	#     document length on the tf-idf values. 
-    vectorizer = TfidfVectorizer(max_df=0.5, max_features=10000,
-								min_df=2, stop_words='english',
-								use_idf=True)
-
-	# Build the tfidf vectorizer from the training data ("fit"), and apply it 
-	# ("transform").
-    X_train_tfidf = vectorizer.fit_transform(X_train_raw)
-    print(X_train_tfidf.get_shape())
-
-    print("  Actual number of tfidf features: %d" % X_train_tfidf.get_shape()[1])
-
-    print("\nPerforming dimensionality reduction using LSA")
-    t0 = time.time()
-
-	# Project the tfidf vectors onto the first 150 principal components.
-	# Though this is significantly fewer features than the original tfidf vector,
-	# they are stronger features, and the accuracy is higher.
-    svd = TruncatedSVD(100)
-    lsa = make_pipeline(svd, Normalizer(copy=False))
-
-	# Run SVD on the training data, then project the training data.
-    X_train_lsa = lsa.fit_transform(X_train_tfidf)
+        explained_variance = svd.explained_variance_ratio_.sum()
+        print("  Explained variance of the SVD step: {}%".format(int(explained_variance * 100)))
 
 
-    print("  done in %.3fsec" % (time.time() - t0))
+        # Now apply the transformations to the test data as well.
+        X_test_tfidf = vectorizer.transform(X_test_raw)
+        print(X_test_tfidf.get_shape())
+        X_test_lsa = lsa.transform(X_test_tfidf)
 
-    explained_variance = svd.explained_variance_ratio_.sum()
-    print("  Explained variance of the SVD step: {}%".format(int(explained_variance * 100)))
-
-
-	# Now apply the transformations to the test data as well.
-    X_test_tfidf = vectorizer.transform(X_test_raw)
-    print(X_test_tfidf.get_shape())
-    X_test_lsa = lsa.transform(X_test_tfidf)
-
-    ###############################################################################
-    #  Run classification of the test articles
-    ###############################################################################
-    # NOTE: The following section is similar to the example code from this link
-    # https://github.com/chrisjmccormick/LSA_Classification/blob/master/runClassification_LSA.py
+        ###############################################################################
+        #  Run classification of the test articles
+        ###############################################################################
+        # NOTE: The following section is similar to the example code from this link
+        # https://github.com/chrisjmccormick/LSA_Classification/blob/master/runClassification_LSA.py
 
 
-    print("\nClassifying tfidf vectors...")
+        print("\nClassifying tfidf vectors...")
 
-    # Time this step.
-    t0 = time.time()
+        # Time this step.
+        t0 = time.time()
 
-    # Build a k-NN classifier. Use k = 5 (majority wins), the cosine distance, 
-    # and brute-force calculation of distances.
-    knn_tfidf = KNeighborsClassifier(n_neighbors=5, algorithm='brute', metric='cosine')
-    knn_tfidf.fit(X_train_tfidf, y_train)                           # =========================> TRAINING
+        # Build a k-NN classifier. Use k = 5 (majority wins), the cosine distance,
+        # and brute-force calculation of distances.
+        knn_tfidf = KNeighborsClassifier(n_neighbors=5, algorithm='brute', metric='cosine')
+        knn_tfidf.fit(X_train_tfidf, y_train)                           # =========================> TRAINING
 
-    # Classify the test vectors.
-    # output = list of labels
-    p = knn_tfidf.predict(X_test_tfidf)                             # =========================> PREDICTING
-
-
-    # Measure accuracy
-    numRight = 0
-    for i in range(0,len(p)):
-        if p[i] == y_test[i]: # compare predicted label with given label of testing data
-            numRight += 1
-
-    print("  (%d / %d) correct - %.2f%%" % (numRight, len(y_test), float(numRight) / float(len(y_test)) * 100.0))
-
-    # Calculate the elapsed time (in seconds)
-    elapsed = (time.time() - t0)
-    print("  done in %.3fsec" % elapsed)
+        # Classify the test vectors.
+        # output = list of labels
+        p = knn_tfidf.predict(X_test_tfidf)                             # =========================> PREDICTING
 
 
-    print("\nClassifying LSA vectors...")
+        # Measure accuracy
+        numRight = 0
+        for i in range(0,len(p)):
+            if p[i] == y_test[i]: # compare predicted label with given label of testing data
+                numRight += 1
+        tf_acc = float(numRight) / float(len(y_test)) * 100.0
+        print("  (%d / %d) correct - %.2f%%" % (numRight, len(y_test), float(numRight) / float(len(y_test)) * 100.0))
 
-    # Time this step.
-    t0 = time.time()
+        # Calculate the elapsed time (in seconds)
+        elapsed = (time.time() - t0)
+        print("  done in %.3fsec" % elapsed)
 
-    # Build a k-NN classifier. Use k = 5 (majority wins), the cosine distance, 
-    # and brute-force calculation of distances.
-    knn_lsa = KNeighborsClassifier(n_neighbors=5, algorithm='brute', metric='cosine')
-    knn_lsa.fit(X_train_lsa, y_train)
 
-    # Classify the test vectors.
-    p = knn_lsa.predict(X_test_lsa)
+        print("\nClassifying LSA vectors...")
 
-    # Measure accuracy
-    numRight = 0
-    for i in range(0,len(p)):
-        if p[i] == y_test[i]:
-            numRight += 1
+        # Time this step.
+        t0 = time.time()
 
-    print("  (%d / %d) correct - %.2f%%" % (numRight, len(y_test), float(numRight) / float(len(y_test)) * 100.0))
+        # Build a k-NN classifier. Use k = 5 (majority wins), the cosine distance,
+        # and brute-force calculation of distances.
+        knn_lsa = KNeighborsClassifier(n_neighbors=5, algorithm='brute', metric='cosine')
+        knn_lsa.fit(X_train_lsa, y_train)
 
-    # Calculate the elapsed time (in seconds)
-    elapsed = (time.time() - t0)    
-    print("    done in %.3fsec" % elapsed)
+        # Classify the test vectors.
+        p = knn_lsa.predict(X_test_lsa)
 
+        # Measure accuracy
+        numRight = 0
+        for i in range(0,len(p)):
+            if p[i] == y_test[i]:
+                numRight += 1
+        lsa_acc = float(numRight) / float(len(y_test)) * 100.0
+        print("  (%d / %d) correct - %.2f%%" % (numRight, len(y_test), float(numRight) / float(len(y_test)) * 100.0))
+
+        # Calculate the elapsed time (in seconds)
+        elapsed = (time.time() - t0)
+        print("    done in %.3fsec" % elapsed)
+        outf.write(str(200*running_size) + "," + str(tf_acc)+ "," + str(lsa_acc) +"\n")
+
+    outf.close()
